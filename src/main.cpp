@@ -2,12 +2,13 @@
 #include "RTClib.h"
 #include <Wire.h>
 
-int lightOnH = 9;
-int lightOffH = 23;
+int lightOnH = 9;   // hour of turning light on
+int lightOffH = 23; // hour of turning light off
 
-int lightPin = 10;
+int lightPin = 2;
+int humidifierPin = 3;
 
-
+void updateHumidifier();
 
 RTC_DS3231 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -18,14 +19,25 @@ void initLight();
 
 bool isLightOn = false;
 
+int humOnTimeH = lightOnH;
+int humOffTimeH = lightOnH + 4;
+bool isHumOn = false;
 
 void setup() {
   Wire.begin();
   Serial.begin(9600);
+  Serial.println("Hello salad3");
   //rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // set clock time
-  //showTime();
+  showTime();
 
   initLight();
+  pinMode(humidifierPin, OUTPUT);
+
+  updateStatus();
+  Serial.println("light on ");
+  Serial.println(isLightOn);
+  Serial.println("humidifier on ");
+  Serial.println(isHumOn);
   // put your setup code here, to run once:
 }
 
@@ -40,6 +52,38 @@ void updateStatus(){
   isLightOn = now.hour() >= lightOnH && now.hour() < lightOffH;
   //isLightOn = now.minute()%2 <= 0;
   digitalWrite(lightPin, isLightOn);
+  updateHumidifier();
+  delay(3000);
+}
+
+
+
+void updateHumidifier()
+{
+  if(!isLightOn){
+    if(isHumOn) {
+      isHumOn = false;
+      digitalWrite(humidifierPin, isHumOn);
+    }
+    return;
+  }
+  DateTime now = rtc.now();
+
+  if(!isHumOn && now.hour() >= humOnTimeH){
+    humOffTimeH = now.hour() + 4;
+    if(humOffTimeH > lightOffH) humOffTimeH = lightOffH;
+    isHumOn = true;
+    digitalWrite(humidifierPin, isHumOn);
+    return;
+  }
+
+  if(isHumOn && now.hour() >= humOffTimeH){
+    humOnTimeH = now.hour() + 1;
+    if(humOnTimeH > lightOffH) humOnTimeH = lightOnH;
+    isHumOn = false;
+    digitalWrite(humidifierPin, isHumOn);
+    return;
+  }
 
 }
 
@@ -66,33 +110,5 @@ void showTime(){
   Serial.print(now.second(), DEC);
   Serial.println();
 
-  Serial.print(" since midnight 1/1/1970 = ");
-  Serial.print(now.unixtime());
-  Serial.print("s = ");
-  Serial.print(now.unixtime() / 86400L);
-  Serial.println("d");
-
-  // calculate a date which is 7 days, 12 hours, 30 minutes, 6 seconds into the future
-  DateTime future (now + TimeSpan(7,12,30,6));
-
-  Serial.print(" now + 7d + 12h + 30m + 6s: ");
-  Serial.print(future.year(), DEC);
-  Serial.print('/');
-  Serial.print(future.month(), DEC);
-  Serial.print('/');
-  Serial.print(future.day(), DEC);
-  Serial.print(' ');
-  Serial.print(future.hour(), DEC);
-  Serial.print(':');
-  Serial.print(future.minute(), DEC);
-  Serial.print(':');
-  Serial.print(future.second(), DEC);
-  Serial.println();
-
-  Serial.print("Temperature: ");
-  Serial.print(rtc.getTemperature());
-  Serial.println(" C");
-
-  Serial.println();
   delay(3000);
 }
