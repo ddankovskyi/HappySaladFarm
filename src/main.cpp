@@ -19,8 +19,12 @@ void initLight();
 
 bool isLightOn = false;
 
+int humidifierWorkingTimeH = 4;
+int humidifierBreakTimeH = 1;
+
+
 int humOnTimeH = lightOnH;
-int humOffTimeH = lightOnH + 4;
+int humOffTimeH = lightOnH + humidifierWorkingTimeH;
 bool isHumOn = false;
 
 void setup() {
@@ -60,17 +64,20 @@ void updateStatus(){
 
 void updateHumidifier()
 {
-  if(!isLightOn){
-    if(isHumOn) {
-      isHumOn = false;
-      digitalWrite(humidifierPin, isHumOn);
-    }
-    return;
-  }
+
   DateTime now = rtc.now();
 
+  if(!isLightOn)
+  {
+    humOnTimeH = lightOnH;
+    humOffTimeH = lightOnH + humidifierWorkingTimeH;
+    isHumOn = false;
+    digitalWrite(humidifierPin, isHumOn);
+    return;
+  }
+
   if(!isHumOn && now.hour() >= humOnTimeH){
-    humOffTimeH = now.hour() + 4;
+    humOffTimeH = now.hour() + humidifierWorkingTimeH;
     if(humOffTimeH > lightOffH) humOffTimeH = lightOffH;
     isHumOn = true;
     digitalWrite(humidifierPin, isHumOn);
@@ -78,7 +85,7 @@ void updateHumidifier()
   }
 
   if(isHumOn && now.hour() >= humOffTimeH){
-    humOnTimeH = now.hour() + 1;
+    humOnTimeH = now.hour() + humidifierBreakTimeH;
     if(humOnTimeH > lightOffH) humOnTimeH = lightOnH;
     isHumOn = false;
     digitalWrite(humidifierPin, isHumOn);
